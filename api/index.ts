@@ -2,6 +2,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const cors = require('cors')
 const app = express();
 const { sql } = require('@vercel/postgres');
 
@@ -13,6 +14,7 @@ const fs = require('fs');
 
 // Create application/x-www-form-urlencoded parser
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
+app.use(cors());
 
 app.use(express.static('public'));
 
