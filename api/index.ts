@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 
 const express = require('express');
@@ -6,11 +7,53 @@ const { sql } = require('@vercel/postgres');
 
 const bodyParser = require('body-parser');
 const path = require('path');
+const PDFDocument = require('pdfkit');
+const blobStream = require('blob-stream');
+const fs = require('fs');
 
 // Create application/x-www-form-urlencoded parser
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 app.use(express.static('public'));
+
+app.post('/pdf', function (req, res) {
+	try {
+		res.setHeader('Content-Type', 'application/pdf');
+		res.setHeader('Content-Disposition', 'attachment; filename=downloaded.pdf');
+
+		const doc = new PDFDocument();
+		doc.pipe(res);
+
+		// 你可以根据POST请求的数据来自定义PDF内容
+		// 例如：req.body.text
+		doc.fontSize(25).text('Some text with an embedded font!', 100, 100);
+
+		doc.end();
+	} catch (error) {
+		console.error(error);
+		res.status(500).send(error.message);
+	}
+});
+
+app.get('/pdf', function (req,res) {
+	try {
+		res.setHeader('Content-Type', 'application/pdf');
+		res.setHeader('Content-Disposition', 'attachment; filename=downloaded.pdf');
+		const doc = new PDFDocument();
+
+		doc.pipe(res);
+
+		doc
+			.fontSize(25)
+			.text('Some text with an embedded font!', 100, 100);
+		doc.end();
+
+	} catch (error) {
+		console.error(error);
+		res.status(500).send(error.message);
+	}
+})
+
 
 app.get('/', function (req, res) {
 	res.sendFile(path.join(__dirname, '..', 'components', 'home.htm'));
