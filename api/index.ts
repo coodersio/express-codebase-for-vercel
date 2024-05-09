@@ -9,26 +9,77 @@ const { sql } = require('@vercel/postgres');
 const bodyParser = require('body-parser');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const blobStream = require('blob-stream');
+const sharp = require('sharp')
 const fs = require('fs');
+const multer  = require('multer');
+const blobStream = require('blob-stream');
+// 设置 multer 用于处理上传的文件
+const storage = multer.memoryStorage(); // 使用内存存储，也可以使用磁盘存储
+const upload = multer({ storage: storage });
+
 
 // Create application/x-www-form-urlencoded parser
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
+
+// 为 JSON 请求体设置更大的大小限制
+app.use(express.json({ limit: '50mb' })); // 设置 limit 为 50mb
+
+// 为 URL 编码的请求体设置更大的大小限制
+app.use(express.urlencoded({ limit: '50mb', extended: false }));
 app.use(cors());
 
 app.use(express.static('public'));
 
+
+app.post('/upload',  (req, res) => {
+	res.setHeader('Content-Type', 'application/pdf');
+	res.setHeader('Content-Disposition', 'attachment; filename=downloaded.pdf');
+	const doc = new PDFDocument();
+
+	const stream = doc.pipe(blobStream());
+
+	// doc.pipe(res);
+
+	doc
+		.fontSize(25)
+		.text('Some text with an embedded font!', 100, 100);
+	doc.end();
+
+	stream.on('finish', function() {
+		// get a blob you can do whatever you like with
+		const blob = stream.toBlob('application/pdf');
+		res.status(200).send(blob)
+	});
+});
+
+
 app.post('/pdf', function (req, res) {
 	try {
+		console.log(req.body.pdfBytes)  // base64
+		const pdfBuffer = Buffer.from(req.body.pdfBytes);
+		const texts = req.body.texts;
+		const targetNode = req.body.targetNode;
+		/**
+		 * Hey y’all, engineer here at Figma: we just shipped an update to utilize more compression for PDF files. We now compress images using JPEG at 75% quality and compress long text streams using zlib.
+		 */
+		// sharp(pdfBuffer)
+		// 	.resize(1000)
+		// 	.jpeg({quality: 80})
 		res.setHeader('Content-Type', 'application/pdf');
 		res.setHeader('Content-Disposition', 'attachment; filename=downloaded.pdf');
 
 		const doc = new PDFDocument();
+
 		doc.pipe(res);
 
 		// 你可以根据POST请求的数据来自定义PDF内容
 		// 例如：req.body.text
-		doc.fontSize(25).text('Some text with an embedded font!', 100, 100);
+		doc.image(`data:image/png;base64,${req.body.pdfBytes}`, 0, 0)
+
+		for(const text of texts) {
+			doc.fontSize(14).text(text.characters, text.x, text.y, {width: targetNode.width, height: targetNode.height})
+
+		}
 
 		doc.end();
 	} catch (error) {
