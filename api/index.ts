@@ -5,24 +5,72 @@ const express = require('express');
 const cors = require('cors')
 const app = express();
 const { sql } = require('@vercel/postgres');
-
+const multer = require('multer');
+const sharp = require('sharp');
 const bodyParser = require('body-parser');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const blobStream = require('blob-stream');
 const fs = require('fs');
 
-// 解析 JSON 格式的请求体
-app.use(express.json({ limit: '50mb' }));
+// 设置 multer 以处理上传的文件
+const storage = multer.memoryStorage(); // 使用内存存储，这样文件不会写入磁盘
+const upload = multer({ storage: storage });
 
-// 解析 URL-encoded 格式的请求体
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Create application/x-www-form-urlencoded parser
-const urlencodedParser = bodyParser.urlencoded({ extended: false });
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(cors());
+app.use(express.static("public"));
 
-app.use(express.static('public'));
+
+app.post('/api/upload', upload.array('images'), async function(req, res, next) {
+	// 上传的文件在req.files中
+	if (!req.files) {
+		return res.status(400).send('No files were uploaded.');
+	}
+
+	// 裁剪图片并保存的函数
+	const cropAndSaveImages = async (file) => {
+		const metadata = await sharp(file.buffer).metadata();
+		const cropSize = metadata.width;
+		const numCrops = Math.floor(metadata.height / cropSize);
+		let croppedImagePaths = [];
+
+		for (let i = 0; i < numCrops; i++) {
+			const top = i * cropSize;
+			const buffer = await sharp(file.buffer).sharpen()
+				.extract({ width: cropSize, height: cropSize, left: 0, top: top })
+				.toBuffer();
+			croppedImagePaths.push(buffer.toString('base64'));
+		}
+
+		// 处理剩余部分，如有必要
+		const remaining = metadata.height % cropSize;
+		if (remaining > 0) {
+			const top = numCrops * cropSize;
+			const buffer = await sharp(file.buffer).sharpen()
+				.extract({ width: cropSize, height: remaining, left: 0, top: top })
+				.toBuffer();
+			croppedImagePaths.push(buffer.toString('base64'));
+		}
+
+		return croppedImagePaths;
+	};
+
+	try {
+		// 对每个文件应用裁剪逻辑
+		let allCroppedImages = [];
+		for (const file of req.files) {
+			const croppedImages = await cropAndSaveImages(file);
+			allCroppedImages.push({name: file.originalname, images: croppedImages});
+		}
+
+		// 返回裁剪后的图片路径
+		res.status(200).json({ croppedImages: allCroppedImages });
+	} catch (err) {
+		res.status(500).send(err.message);
+	}
+});
 
 app.post('/pdf', function (req, res) {
 	try {
@@ -75,15 +123,7 @@ app.get('/uploadUser', function (req, res) {
 	res.sendFile(path.join(__dirname, '..', 'components', 'user_upload_form.htm'));
 });
 
-app.post('/uploadSuccessful', urlencodedParser, async (req, res) => {
-	try {
-		await sql`INSERT INTO Users (Id, Name, Email) VALUES (${req.body.user_id}, ${req.body.name}, ${req.body.email});`;
-		res.status(200).send('<h1>User added successfully</h1>');
-	} catch (error) {
-		console.error(error);
-		res.status(500).send('Error adding user');
-	}
-});
+
 
 app.get('/allUsers', async (req, res) => {
 	try {
