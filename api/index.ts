@@ -11,12 +11,66 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const blobStream = require('blob-stream');
 const fs = require('fs');
+const sharp = require('sharp')
+
+
+// 解析 JSON 格式的请求体
+app.use(express.json({ limit: '50mb' }));
+
+// 解析 URL-encoded 格式的请求体
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Create application/x-www-form-urlencoded parser
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 app.use(cors());
 
 app.use(express.static('public'));
+
+app.post('/ttif', function (req, res) {
+		console.log(req.body)
+	const svgString = req.body.svgString;
+	const filename = req.body.filename || "unknown";
+	const printSize = req.body.printSize || "4x6"
+	const [widthInches, heightInches] = printSize.split('x').map(Number);
+
+
+	const dpi = req.body.dpi || 72
+
+	const width = widthInches * dpi;
+	const height = heightInches * dpi;
+
+	if (!svgString) {
+		return res.status(400).send('No SVG data provided.');
+	}
+
+	console.log(width, height)
+	sharp(Buffer.from(svgString))
+		.resize({
+			width: Math.round(width),
+			height: Math.round(height),
+			fit: 'inside', // 保持宽高比，确保图像完整显示
+			// withoutEnlargement: true // 防止放大图像
+		})
+		.toFormat('tiff')
+		.tiff({
+			compression: 'lzw',
+			alpha: 'associated' // 确保 alpha 通道（透明度）被关联（保留）
+		})
+		.withIccProfile('cmyk')
+		.withMetadata({ density: dpi })
+		.toBuffer()
+		.then(data => {
+			// 设置响应类型和强制下载的文件名
+			res.setHeader('Content-Disposition', `attachment; filename=${filename}.tiff`);
+			res.setHeader('Content-Type', 'image/tiff');
+			res.send(data);
+		})
+		.catch(err => {
+			console.error('Error converting SVG to TIFF:', err);
+			res.status(500).send('Error converting SVG to TIFF.');
+		});
+});
+
 
 app.post('/pdf', function (req, res) {
 	try {
