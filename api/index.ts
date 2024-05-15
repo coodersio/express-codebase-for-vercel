@@ -12,7 +12,7 @@ const PDFDocument = require('pdfkit');
 const blobStream = require('blob-stream');
 const fs = require('fs');
 const sharp = require('sharp')
-
+const os = require('os');
 
 // 解析 JSON 格式的请求体
 app.use(express.json({ limit: '50mb' }));
@@ -26,49 +26,166 @@ app.use(cors());
 
 app.use(express.static('public'));
 
-app.post('/ttif', function (req, res) {
+app.post('/ttif', async function (req, res) {
 		console.log(req.body)
 	const svgString = req.body.svgString;
 	const filename = req.body.filename || "unknown";
 	const printSize = req.body.printSize || "4x6"
-	const [widthInches, heightInches] = printSize.split('x').map(Number);
-
-
+	const format = req.body.format || "png"
+	const sizeUnit = req.body.sizeUnit
+	let width = req.body.width
+	let height = req.body.height
 	const dpi = req.body.dpi || 72
+	const quality = req.body.quality
+	const channel = req.body.channel
+	const sizeOption = req.body.sizeOption
+	const chromaSubsampling = req.body.chromaSubsampling
+	const compressionLevel = req.body.compressionLevel
+	const alphaQuality = req.body.alphaQuality
+	const lossless = req.body.lossless
 
-	const width = widthInches * dpi;
-	const height = heightInches * dpi;
+
+	if(sizeUnit === 'inch') {
+		width = width * dpi;
+		height = height * dpi;
+	}
+
+	if(sizeOption === '1') {
+		height = undefined
+	}
+	if(sizeOption === '2') {
+		width = undefined
+	}
+
+
 
 	if (!svgString) {
 		return res.status(400).send('No SVG data provided.');
 	}
 
-	console.log(width, height)
-	sharp(Buffer.from(svgString))
-		.resize({
-			width: Math.round(width),
-			height: Math.round(height),
-			fit: 'inside', // 保持宽高比，确保图像完整显示
-			// withoutEnlargement: true // 防止放大图像
-		})
-		.toFormat('tiff')
-		.tiff({
-			compression: 'lzw',
-			alpha: 'associated' // 确保 alpha 通道（透明度）被关联（保留）
-		})
-		.withIccProfile('cmyk')
-		.withMetadata({ density: dpi })
-		.toBuffer()
-		.then(data => {
-			// 设置响应类型和强制下载的文件名
-			res.setHeader('Content-Disposition', `attachment; filename=${filename}.tiff`);
-			res.setHeader('Content-Type', 'image/tiff');
+	let data
+
+	try	{
+		if(format === 'jpeg') {
+			data = await sharp(Buffer.from(svgString)).resize({
+				width: width ? Math.round(width) : undefined,
+				height: height ? Math.round(height) : undefined,
+				fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
+			})
+				.toFormat('jpeg', {
+					quality: quality,
+					progressive: true,
+					chromaSubsampling: chromaSubsampling // 需要增加这个设置
+				})
+				.toBuffer()
+			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Type', 'image/*');
 			res.send(data);
-		})
-		.catch(err => {
-			console.error('Error converting SVG to TIFF:', err);
-			res.status(500).send('Error converting SVG to TIFF.');
-		});
+		}
+		if(format === 'png') {
+			data = await sharp(Buffer.from(svgString)).resize({
+				width: width ? Math.round(width) : undefined,
+				height: height ? Math.round(height) : undefined,
+				fit: sizeOption === '0' ?  'cover' : 'inside', // 保持宽高比，确保图像完整显示
+			})
+				.toFormat('png', {
+					quality: quality,
+					compressionLevel: compressionLevel // 需要增加这个设置
+				}).toBuffer()
+
+			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Type', 'image/*');
+			res.send(data);
+		}
+
+		if(format === 'tiff') {
+			if(channel === 'cmyk') {
+				data = await sharp(Buffer.from(svgString)).resize({
+					width: width ? Math.round(width) : undefined,
+					height: height ? Math.round(height) : undefined,
+					fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
+				})
+
+					.toColourspace(channel)
+					.toFormat('tiff', {
+						quality: quality,
+						compression: 'lzw'
+					}).toBuffer()
+			} else {
+				data = await sharp(Buffer.from(svgString)).resize({
+					width: width ? Math.round(width) : undefined,
+					height: height ? Math.round(height) : undefined,
+					fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
+				})
+					.withMetadata({ density: dpi })
+					.toFormat('tiff', {
+						quality: quality,
+						compression: 'lzw'
+					}).toBuffer()
+
+			}
+
+
+			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Type', 'image/*');
+			res.send(data);
+
+
+		}
+
+		if(format === 'webp') {
+			data = await sharp(Buffer.from(svgString)).resize({
+				width: width ? Math.round(width) : undefined,
+				height: height ? Math.round(height) : undefined,
+				fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
+			})
+				.toFormat('webp', {
+					quality: quality,
+					lossless: lossless, // 需要添加这两个
+					alphaQuality: alphaQuality,
+				}).toBuffer()
+
+			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Type', 'image/*');
+			res.send(data);
+		}
+
+	} catch (err) {
+		console.error('Error converting SVG to TIFF:', err);
+		res.status(500).send('Error converting SVG to TIFF.');
+	}
+
+
+
+
+	// TODO, 需要一个一个的测试，特别是对文档需要了解。
+	// console.log(width, height)
+	// sharp(Buffer.from(svgString))
+	// 	.resize({
+	// 		width: Math.round(width),
+	// 		height: Math.round(height),
+	// 		fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
+	// 		// withoutEnlargement: true // 防止放大图像
+	// 	})
+	// 	.withMetadata({ icc: "cmyk" })
+	// 	// .quality(quality)
+	// 	.toFormat(format)
+	// 	// .channel(channel === 'cmyk' ? 4: 3)
+	// 	.withIccProfile(channel)
+	// 	// .space(channel)
+	// 	// .density(dpi)
+	// 	.withMetadata({ density: dpi })
+	// 	.toBuffer()
+	// 	.then(data => {
+	// 		// 设置响应类型和强制下载的文件名
+	// 		res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+	// 		res.setHeader('Content-Type', 'image/*');
+	// 		res.send(data);
+	// 	})
+	// 	.catch(err => {
+	// 		console.error('Error converting SVG to TIFF:', err);
+	// 		res.status(500).send('Error converting SVG to TIFF.');
+	// 	});
 });
 
 
