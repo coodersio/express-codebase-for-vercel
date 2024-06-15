@@ -78,7 +78,7 @@ app.post('/ttif', async function (req, res) {
 					chromaSubsampling: chromaSubsampling // 需要增加这个设置
 				})
 				.toBuffer()
-			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Disposition', `attachment; filename=${encodeURI(filename)}.${format}`);
 			res.setHeader('Content-Type', 'image/*');
 			res.send(data);
 		}
@@ -93,7 +93,7 @@ app.post('/ttif', async function (req, res) {
 					compressionLevel: compressionLevel // 需要增加这个设置
 				}).toBuffer()
 
-			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Disposition', `attachment; filename=${encodeURI(filename)}.${format}`);
 			res.setHeader('Content-Type', 'image/*');
 			res.send(data);
 		}
@@ -126,7 +126,7 @@ app.post('/ttif', async function (req, res) {
 			}
 
 
-			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Disposition', `attachment; filename=${encodeURI(filename)}.${format}`);
 			res.setHeader('Content-Type', 'image/*');
 			res.send(data);
 
@@ -145,7 +145,7 @@ app.post('/ttif', async function (req, res) {
 					alphaQuality: alphaQuality,
 				}).toBuffer()
 
-			res.setHeader('Content-Disposition', `attachment; filename=${filename}.${format}`);
+			res.setHeader('Content-Disposition', `attachment; filename=${encodeURI(filename)}.${format}`);
 			res.setHeader('Content-Type', 'image/*');
 			res.send(data);
 		}
