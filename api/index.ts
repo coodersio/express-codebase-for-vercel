@@ -15,10 +15,10 @@ const sharp = require('sharp')
 const os = require('os');
 
 // 解析 JSON 格式的请求体
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '500mb' }));
 
 // 解析 URL-encoded 格式的请求体
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // Create application/x-www-form-urlencoded parser
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
@@ -27,7 +27,6 @@ app.use(cors());
 app.use(express.static('public'));
 
 app.post('/ttif', async function (req, res) {
-		console.log(req.body)
 	const svgString = req.body.svgString;
 	const filename = req.body.filename || "unknown";
 	const printSize = req.body.printSize || "4x6"
@@ -67,7 +66,9 @@ app.post('/ttif', async function (req, res) {
 
 	try	{
 		if(format === 'jpeg') {
-			data = await sharp(Buffer.from(svgString)).resize({
+			data = await sharp(Buffer.from(svgString), {
+				unlimited: true
+			}).resize({
 				width: width ? Math.round(width) : undefined,
 				height: height ? Math.round(height) : undefined,
 				fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
@@ -83,7 +84,9 @@ app.post('/ttif', async function (req, res) {
 			res.send(data);
 		}
 		if(format === 'png') {
-			data = await sharp(Buffer.from(svgString)).resize({
+			data = await sharp(Buffer.from(svgString), {
+				unlimited: true
+			}).resize({
 				width: width ? Math.round(width) : undefined,
 				height: height ? Math.round(height) : undefined,
 				fit: sizeOption === '0' ?  'cover' : 'inside', // 保持宽高比，确保图像完整显示
@@ -100,7 +103,9 @@ app.post('/ttif', async function (req, res) {
 
 		if(format === 'tiff') {
 			if(channel === 'cmyk') {
-				data = await sharp(Buffer.from(svgString)).resize({
+				data = await sharp(Buffer.from(svgString), {
+					unlimited: true
+				}).resize({
 					width: width ? Math.round(width) : undefined,
 					height: height ? Math.round(height) : undefined,
 					fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
@@ -112,7 +117,9 @@ app.post('/ttif', async function (req, res) {
 						compression: 'lzw'
 					}).toBuffer()
 			} else {
-				data = await sharp(Buffer.from(svgString)).resize({
+				data = await sharp(Buffer.from(svgString), {
+					unlimited: true
+				}).resize({
 					width: width ? Math.round(width) : undefined,
 					height: height ? Math.round(height) : undefined,
 					fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
@@ -134,7 +141,9 @@ app.post('/ttif', async function (req, res) {
 		}
 
 		if(format === 'webp') {
-			data = await sharp(Buffer.from(svgString)).resize({
+			data = await sharp(Buffer.from(svgString), {
+				unlimited: true
+			}).resize({
 				width: width ? Math.round(width) : undefined,
 				height: height ? Math.round(height) : undefined,
 				fit: sizeOption === '0' ?  undefined : 'inside', // 保持宽高比，确保图像完整显示
