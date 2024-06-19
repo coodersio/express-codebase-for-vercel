@@ -20,10 +20,13 @@ app.use(express.json({ limit: '50mb' }));
 // 解析 URL-encoded 格式的请求体
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
 // Create application/x-www-form-urlencoded parser
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 app.use(cors());
-app.use(bodyParser({limit: '50mb'}));
+
 app.use(express.static('public'));
 
 app.post('/ttif', async function (req, res) {
