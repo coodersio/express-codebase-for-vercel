@@ -15,10 +15,10 @@ const sharp = require('sharp')
 const os = require('os');
 
 // 解析 JSON 格式的请求体
-app.use(express.json({ limit: '500mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // 解析 URL-encoded 格式的请求体
-app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Create application/x-www-form-urlencoded parser
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
