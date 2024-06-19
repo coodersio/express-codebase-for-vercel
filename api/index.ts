@@ -14,16 +14,14 @@ const fs = require('fs');
 const sharp = require('sharp')
 const os = require('os');
 
-//
-// app.use(bodyParser.json({ limit: '500mb' }));
-// app.use(bodyParser.urlencoded({ extended: true, limit: '500mb' }));
-// // 解析 JSON 格式的请求体
-// app.use(express.json({ limit: '500mb' }));
-// // 解析 URL-encoded 格式的请求体
-// app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+
 app.use(bodyParser.json({ limit: '100mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '100mb' }));
-app.use(express.json());
+// 解析 JSON 格式的请求体
+app.use(express.json({ limit: '100mb' }));
+// 解析 URL-encoded 格式的请求体
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
 
 app.use(cors());
 
