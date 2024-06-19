@@ -14,17 +14,17 @@ const fs = require('fs');
 const sharp = require('sharp')
 const os = require('os');
 
-// 解析 JSON 格式的请求体
-app.use(express.json({ limit: '500mb' }));
+//
+// app.use(bodyParser.json({ limit: '500mb' }));
+// app.use(bodyParser.urlencoded({ extended: true, limit: '500mb' }));
+// // 解析 JSON 格式的请求体
+// app.use(express.json({ limit: '500mb' }));
+// // 解析 URL-encoded 格式的请求体
+// app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+app.use(bodyParser.json({ limit: '100mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.json());
 
-// 解析 URL-encoded 格式的请求体
-app.use(express.urlencoded({ extended: true, limit: '500mb' }));
-
-app.use(bodyParser.json({ limit: '500mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '500mb' }));
-
-// Create application/x-www-form-urlencoded parser
-const urlencodedParser = bodyParser.urlencoded({ extended: false, limit: '500mb' });
 app.use(cors());
 
 app.use(express.static('public'));
@@ -252,7 +252,7 @@ app.get('/uploadUser', function (req, res) {
 	res.sendFile(path.join(__dirname, '..', 'components', 'user_upload_form.htm'));
 });
 
-app.post('/uploadSuccessful', urlencodedParser, async (req, res) => {
+app.post('/uploadSuccessful', async (req, res) => {
 	try {
 		await sql`INSERT INTO Users (Id, Name, Email) VALUES (${req.body.user_id}, ${req.body.name}, ${req.body.email});`;
 		res.status(200).send('<h1>User added successfully</h1>');
